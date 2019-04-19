@@ -6,6 +6,9 @@
 *dts-framework 用于做分布式事务控制包*
 
 ## 流程图
-
+### 简单类型
+![image](https://github.com/jsun150/dts/edit/master/simple.png)
+### 复杂类型
+![image](https://github.com/jsun150/dts/edit/master/complex.png)
                       
 
