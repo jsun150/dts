@@ -24,7 +24,6 @@ public class TxRegistrar implements ImportBeanDefinitionRegistrar {
 
             BeanDefinition interceptor = TxRegistrationUtil.registerBeanDefinitionIfNotExists(registry,
                     TxInterceptor.class.getName(), TxInterceptor.class);
-            interceptor.getPropertyValues().add("dlxMessageProducer", new RuntimeBeanReference("dlxMessageProducer"));
 
             BeanDefinition advisor = TxRegistrationUtil.registerBeanDefinitionIfNotExists(registry,
                     TxFactoryAttributeSourceAdvisor.class.getName(), TxFactoryAttributeSourceAdvisor.class);

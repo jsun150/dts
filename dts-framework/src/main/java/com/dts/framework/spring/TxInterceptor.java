@@ -1,13 +1,12 @@
 package com.dts.framework.spring;
 
 import com.alibaba.fastjson.JSON;
+import com.dts.dlxmq.dlx.DlxConst;
 import com.dts.dlxmq.dlx.DlxMessageProducer;
 import com.dts.framework.annotation.TxClient;
 import com.dts.framework.annotation.TxServer;
-import com.dts.framework.support.RecheckBean;
-import com.dts.framework.support.TxConst;
-import com.dts.framework.support.TxContext;
-import com.dts.framework.support.TxMessage;
+import com.dts.framework.dlxmq.TxDlxMessageConsumer;
+import com.dts.framework.support.*;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.logging.Log;
@@ -39,8 +38,6 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
     protected final Log logger = LogFactory.getLog(getClass());
 
     private ThreadLocal<TxContext> LOCAL_TX_CONTEXT = TxContextSupport.getTxContextThreadLocal();
-    //方法对应的回调路径
-    private Map<String, RecheckBean> CHECK_F_MAP = new ConcurrentHashMap<>();
     //调用方对应的mq路径
     private Map<String, String> SERVER_MQ_MAP = new ConcurrentHashMap<>();
     // 本地方法记录
@@ -48,8 +45,6 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
     private List<String> serverthodName = new ArrayList<>();
     // 记录server第几个参数为RecheckBean
     private Map<String, Integer> recheckBeanIndex = new HashMap<>();
-    //server方法是否是本地实现
-    private Map<Class, Boolean> inJvm = new HashMap<>();
     //server方法是否支持本地单接口反查
     private Map<String, Boolean> LOCAL_SERVER_METHOD_SUPPORT_RECHECK = new HashMap<>();
     private DlxMessageProducer dlxMessageProducer;
@@ -58,13 +53,14 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
     @Override
     public Object invoke(MethodInvocation invocation) throws Throwable {
         Method method = invocation.getMethod();
-        String name = method.getName();
+        String name = method.toString();
 
         if (injvmMethodName.contains(name)) {
             return invokeWithinTransaction(invocation);
         } else if (serverthodName.contains(name)) {
             return invokeServerTranscation(invocation);
         }
+        //初始化缓存
         TxClient txClient = invocation.getMethod().getAnnotation(TxClient.class);
         if (txClient != null) {
             injvmMethodName.add(name);
@@ -75,27 +71,48 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
         }
     }
 
+    /**
+     * 调用带@TxServer注解的方法。
+     * 区分本地调用和rpc调用
+     *
+     * @param invocation
+     * @return
+     * @throws Throwable
+     */
     private Object invokeServerTranscation(MethodInvocation invocation) throws Throwable {
         Object revalue = null;
         try {
             //本地调用
             if (serverInJvm(invocation.getClass())) {
+                //本地调用结束
                 revalue = invocation.proceed();
+                //rpc过来的请求,触发的本地调用 是否满足recheck
+                RecheckBean recheckBean = null;
+                if ((recheckBean = localInvokeByRpc(invocation)) != null) {
+                    if (dlxMessageProducer == null) {
+                        String beanId = DlxConst.DLX_MESSAGE_CONSUMER_BEAN_ID;
+                        if (!StringUtils.isEmpty(beanId)) {
+                            dlxMessageProducer = applicationContext.getBean("dlxMessageProducer", DlxMessageProducer.class);
+                        }
+                    }
+                    dlxMessageProducer.sendMessageToDlx(JSON.toJSONString(recheckBean), recheckBean.getFirstRecheckSecond());
+                }
             } else {
+                //开启事务 - txflow在第一次调用注解TxServer的服务时候生成
+                checkAndopenTx(invocation.getMethod(), invocation.getMethod().toString());
                 //远程调用
                 Method method = invocation.getMethod();
-                String mqInfo;
-                if (StringUtils.isEmpty((mqInfo = SERVER_MQ_MAP.get(method.getName())))) {
-                    TxServer ts = invocation.getMethod().getAnnotation(TxServer.class);
+                TxServer ts = null;
+                if (StringUtils.isEmpty((SERVER_MQ_MAP.get(method.toString())))) {
+                    ts = (TxServer) ProxyMethodTXCache.get(invocation.getMethod().toString());
                     if (StringUtils.isEmpty(ts.mqInfo())) {
-                        throw new Exception("error: " + method.getName() + " annotation can not find mqInfo");
+                        throw new Exception("error: " + method.toString() + " annotation can not find mqInfo");
                     }
-                    SERVER_MQ_MAP.put(method.getName(), mqInfo);
+                    SERVER_MQ_MAP.put(method.toString(), ts.mqInfo());
                 }
 
-
                 // 填入回调参数
-                Integer index = recheckBeanIndex.get(method.getName());
+                Integer index = recheckBeanIndex.get(method.toString());
                 if (index == null) {
                     index = getRecheckBeanIndex(invocation);
                 }
@@ -107,42 +124,34 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
                         obj = method.getParameterTypes()[index].newInstance();
                         invocation.getArguments()[index] = obj;
                     }
-                    BeanUtils.copyProperties(CHECK_F_MAP.get(method.getName()), obj);
+                    BeanUtils.copyProperties(LOCAL_TX_CONTEXT.get().getRecheckMap().get(method.toString()), obj);
                 }
                 revalue = invocation.proceed();
-                LOCAL_TX_CONTEXT.get().getCheckMqList().add(mqInfo);
+                LOCAL_TX_CONTEXT.get().getInvokeMethodNameList().add(method.toString());
             }
         } catch (Throwable ex) {
+            if (logger.isTraceEnabled()) {
+                logger.trace("invokeServerTranscation error ", ex);
+            }
             throw ex;
         }
         return revalue;
     }
 
     /**
-     * 本地方法调用 开启事务 关闭事务
+     * 本地带@TxClient 注解的方法调用
      *
      * @param invocation
      * @return
      * @throws Throwable
      */
     private Object invokeWithinTransaction(MethodInvocation invocation) throws Throwable {
-        //获取对应事务回调方法
-        String methodName = invocation.getMethod().getName();
-        RecheckBean recheckBean;
-        if ((recheckBean = CHECK_F_MAP.get(methodName)) == null) {
-            TxClient tx = invocation.getMethod().getAnnotation(TxClient.class);
-            if (tx != null) {
-                recheckBean = new RecheckBean();
-                recheckBean.setRecheckFunction(tx.recheckFunction());
-                recheckBean.setTxFlowId(LOCAL_TX_CONTEXT.get().getTxFlowId());
-                recheckBean.setDelayTime(tx.delayTime());
-                recheckBean.setFirstRecheckSecond(tx.firstRecheckSecond());
-            }
-            CHECK_F_MAP.put(methodName, recheckBean);
-        }
-        //开启事务
-        checkAndopenTx(invocation.getMethod(), methodName);
         Object revalue = null;
+        //事务开启和集成在 调用server时候创建
+        if (LOCAL_TX_CONTEXT.get().getTxClient() == null) {
+            TxClient txClient = invocation.getMethod().getAnnotation(TxClient.class);
+            LOCAL_TX_CONTEXT.get().setTxClient(txClient);
+        }
         try {
             revalue = invocation.proceed();
             closeTx();
@@ -167,23 +176,22 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
         }
         //首次开启 初始化参数
         if (!context.isStart()) {
-            context.setMethod(method.getName());
+            context.setMethod(method.toString());
             TxMessage message = new TxMessage();
             message.setTxFlow(flowId);
             context.setMessage(message);
             RecheckBean recheckBean;
-            if ((recheckBean = CHECK_F_MAP.get(methodName)) == null) {
-                TxClient tx = method.getAnnotation(TxClient.class);
-                if (tx != null) {
+            if ((recheckBean = LOCAL_TX_CONTEXT.get().getRecheckMap().get(methodName)) == null) {
+                TxClient txClient = LOCAL_TX_CONTEXT.get().getTxClient();
+                if (txClient != null) {
                     recheckBean = new RecheckBean();
-                    recheckBean.setRecheckFunction(tx.recheckFunction());
+                    recheckBean.setRecheckFunction(txClient.recheckFunction());
                     recheckBean.setTxFlowId(LOCAL_TX_CONTEXT.get().getTxFlowId());
-                    recheckBean.setDelayTime(tx.delayTime());
-                    recheckBean.setFirstRecheckSecond(tx.firstRecheckSecond());
+                    recheckBean.setDelayTime(txClient.delayTime());
+                    recheckBean.setFirstRecheckSecond(txClient.firstRecheckSecond());
                 }
-                CHECK_F_MAP.put(methodName, recheckBean);
+                LOCAL_TX_CONTEXT.get().getRecheckMap().put(methodName, recheckBean);
             }
-            context.setCheck(recheckBean.getRecheckFunction());
             context.setStart(true);
         }
     }
@@ -195,10 +203,9 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
     private void completeTransactionAfterThrowing(Throwable ex) {
         TxContext txContext = LOCAL_TX_CONTEXT.get();
         if (logger.isTraceEnabled()) {
-            logger.trace("Completing transaction for [" + txContext.getMethod() + "] after exception: " + ex);
+            logger.trace("Completing transaction for [" + txContext.getMethod().toString() + "] after exception: " + ex);
         }
         //发送回滚消息
-        txContext.setEnd(true);
         txContext.setSuccess(false);
     }
 
@@ -210,22 +217,22 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
         txContext.setEndTime(System.currentTimeMillis());
         txContext.getMessage().setSuccess(txContext.isSuccess());
         //发送mq
-        List<String> list = txContext.getCheckMqList();
+        List<String> invokeMethods = txContext.getInvokeMethodNameList();
+        //调用的方法中没有tx系列的server. 结束
+        if (CollectionUtils.isEmpty(invokeMethods)) return;
         if (amqpTemplate == null) {
             this.amqpTemplate = applicationContext.getBean(TxConst.TX_RABBIT_TEMPLATE_ID, AmqpTemplate.class);
         }
-        if (!CollectionUtils.isEmpty(list)) {
-            String message = JSON.toJSONString(txContext.getMessage());
-            for (String str : list) {
-                String[] args = str.split("@");
-//                amqpTemplate.convertAndSend(args[0], args[1], message);
-                logger.info("send message:" + str + " | " + message);
-            }
+        String message = JSON.toJSONString(txContext.getMessage());
+        for (String str : invokeMethods) {
+            String mqinfo = SERVER_MQ_MAP.get(str);
+            if (StringUtils.isEmpty(mqinfo)) continue;
+            String[] args = mqinfo.split("@");
+            amqpTemplate.convertAndSend(args[0], args[1], message);
         }
         if (logger.isTraceEnabled()) {
-            logger.trace("Completing TxClient end for [" + txContext.getMethod() + "] time:" + (txContext.getEndTime() - txContext.getStartTime()));
+            logger.trace("Completing TxClient end for [" + txContext.getMethod().toString() + "] time:" + (txContext.getEndTime() - txContext.getStartTime()));
         }
-
     }
 
     @Override
@@ -259,18 +266,29 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
     }
 
     private boolean serverInJvm(Class clas_) {
-        try {
-            Boolean exist = inJvm.get(clas_);
-            if (exist == null) {
-                exist = Class.forName(clas_.getName() + "Impl") != null ? true : false;
-                inJvm.put(clas_, exist);
-            }
-            return exist;
-        } catch (Exception e) {
-            inJvm.put(clas_, false);
-        }
-        return false;
+        return clas_.getName().equalsIgnoreCase(org.springframework.aop.framework.ReflectiveMethodInvocation.class.getName());
     }
+
+    /**
+     * 本地方法调用是否需要reckec
+     * 根据参数中的flowid判断 是否由rpc调用触发本地调用
+     *
+     * @param invocation
+     * @return
+     */
+    private RecheckBean localInvokeByRpc(MethodInvocation invocation) {
+        Object[] args = invocation.getArguments();
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] != null && args[i] instanceof RecheckBean) {
+                RecheckBean bean = (RecheckBean) args[i];
+                if (!StringUtils.isEmpty(bean.getRecheckFunction()) && !StringUtils.isEmpty(bean.getTxFlowId())){
+                    return bean;
+                }
+            }
+        }
+        return null;
+    }
+
 
     private RecheckBean findRecheckBean(MethodInvocation invocation) {
         Object[] args = invocation.getArguments();
@@ -284,21 +302,24 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
         return null;
     }
 
+    /**
+     * 支持接口反查 需要TXserver isSupporRecheck = true
+     * TxClient recheckFunction 不为空
+     *
+     * @param invocation
+     * @return
+     */
     private boolean methodSupportRecheck(MethodInvocation invocation) {
-        Boolean b = LOCAL_SERVER_METHOD_SUPPORT_RECHECK.get(invocation.getMethod().getName());
+        Boolean b = LOCAL_SERVER_METHOD_SUPPORT_RECHECK.get(invocation.getMethod().toString());
         if (b == null) {
-            TxServer serverAnnotation = invocation.getMethod().getAnnotation(TxServer.class);
-            b = serverAnnotation != null && serverAnnotation.isSupporRecheck() ? true : false;
-            LOCAL_SERVER_METHOD_SUPPORT_RECHECK.put(invocation.getMethod().getName(), b);
+            TxServer serverAnnotation = (TxServer) ProxyMethodTXCache.get(invocation.getMethod().toString());
+            b = serverAnnotation != null
+                    && serverAnnotation.isSupporRecheck()
+                    && !StringUtils.isEmpty(LOCAL_TX_CONTEXT.get().getTxClient().recheckFunction())
+                    ? true : false;
+            LOCAL_SERVER_METHOD_SUPPORT_RECHECK.put(invocation.getMethod().toString(), b);
         }
         return b;
     }
 
-    public DlxMessageProducer getDlxMessageProducer() {
-        return dlxMessageProducer;
-    }
-
-    public void setDlxMessageProducer(DlxMessageProducer dlxMessageProducer) {
-        this.dlxMessageProducer = dlxMessageProducer;
-    }
 }

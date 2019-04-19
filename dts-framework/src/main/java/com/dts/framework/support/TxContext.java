@@ -1,7 +1,12 @@
 package com.dts.framework.support;
 
+import com.dts.framework.annotation.TxClient;
+
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Jook
@@ -10,12 +15,9 @@ import java.util.List;
 public class TxContext {
 
     private boolean start = false;
-    private boolean end = false;
     private String method;
-    //{EXCHANGE}@{ROUTING}
-    private List<String> checkMqList = new ArrayList<>();
-    //回调确认方法
-    private String check;
+    //调用的所有tx rpc方法
+    private List<String> invokeMethodNameList = new ArrayList<>();
     private boolean success = false;
     //流水
     private String txFlowId;
@@ -24,6 +26,18 @@ public class TxContext {
     //事务开始结束时间
     private Long startTime = System.currentTimeMillis();
     private Long endTime;
+    //方法对应的回调路径
+    private Map<String, RecheckBean> recheckMap = new ConcurrentHashMap<>();
+    private TxClient txClient;
+
+
+    public TxClient getTxClient() {
+        return txClient;
+    }
+
+    public void setTxClient(TxClient txClient) {
+        this.txClient = txClient;
+    }
 
     public Long getEndTime() {
         return endTime;
@@ -65,28 +79,12 @@ public class TxContext {
         this.success = success;
     }
 
-    public String getCheck() {
-        return check;
-    }
-
-    public void setCheck(String check) {
-        this.check = check;
-    }
-
     public boolean isStart() {
         return start;
     }
 
     public void setStart(boolean start) {
         this.start = start;
-    }
-
-    public boolean isEnd() {
-        return end;
-    }
-
-    public void setEnd(boolean end) {
-        this.end = end;
     }
 
     public String getMethod() {
@@ -97,11 +95,19 @@ public class TxContext {
         this.method = method;
     }
 
-    public List<String> getCheckMqList() {
-        return checkMqList;
+    public List<String> getInvokeMethodNameList() {
+        return invokeMethodNameList;
     }
 
-    public void setCheckMqList(List<String> checkMqList) {
-        this.checkMqList = checkMqList;
+    public void setInvokeMethodNameList(List<String> invokeMethodNameList) {
+        this.invokeMethodNameList = invokeMethodNameList;
+    }
+
+    public Map<String, RecheckBean> getRecheckMap() {
+        return recheckMap;
+    }
+
+    public void setRecheckMap(Map<String, RecheckBean> recheckMap) {
+        this.recheckMap = recheckMap;
     }
 }

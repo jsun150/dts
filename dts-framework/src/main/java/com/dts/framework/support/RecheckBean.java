@@ -1,10 +1,12 @@
 package com.dts.framework.support;
 
+import java.io.Serializable;
+
 /**
  * @author Jook
  * @create 2019-03-26 19:50
  **/
-public class RecheckBean {
+public class RecheckBean implements Serializable{
 
     /**
      * 首次反查的时间

@@ -16,7 +16,8 @@ public class DlxMessageProducer {
     private RabbitTemplate dlxAmqpTemplate;
     private volatile MessageConverter messageConverter = new SimpleMessageConverter();
 
-    public void sendMessageToDlx(String message, Long millisecond) {
+    public void sendMessageToDlx(String message, Long second) {
+        Long millisecond = second * 1000;
         MessageProperties properties = new MessageProperties();
         properties.setExpiration(String.valueOf(millisecond));
         dlxAmqpTemplate.send(DlxConst.X_DEAD_LETTER_EXCHANGE, DlxConst.X_DEAD_Q_NAME, convertMessageIfNecessary(message, properties), null);

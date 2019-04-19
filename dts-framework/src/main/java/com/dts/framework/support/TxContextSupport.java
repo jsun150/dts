@@ -14,7 +14,7 @@ public class TxContextSupport {
         }
     };
 
-    static ThreadLocal<TxContext> getTxContextThreadLocal(){
+    public static ThreadLocal<TxContext> getTxContextThreadLocal(){
         return LOCAL_TX_CONTEXT;
     }
 
