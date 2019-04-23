@@ -48,6 +48,8 @@ public class TxPointcut extends StaticMethodMatcherPointcut implements Serializa
                 }
             }
         }
+        //兼容feign "default." + metadata.getClassName().xx;   FeignClientSpecification
+        // rpc$feign$classname  Feign
         return false;
     }
 

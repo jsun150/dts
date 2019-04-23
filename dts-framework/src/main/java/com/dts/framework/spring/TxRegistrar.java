@@ -2,8 +2,8 @@ package com.dts.framework.spring;
 
 import com.dts.framework.annotation.EnableTxConfig;
 import com.dts.framework.support.TxConst;
+import org.springframework.aop.config.AopConfigUtils;
 import org.springframework.beans.factory.config.BeanDefinition;
-import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.type.AnnotationMetadata;
@@ -29,6 +29,12 @@ public class TxRegistrar implements ImportBeanDefinitionRegistrar {
                     TxFactoryAttributeSourceAdvisor.class.getName(), TxFactoryAttributeSourceAdvisor.class);
             // 注入interceptor
             advisor.getPropertyValues().add("adviceBeanName", interceptor.getBeanClassName());
+
+            //如果已经有其他高等级的 TxAdvisorAutoProxyCreator 不创建或者会被覆盖
+            if (!registry.containsBeanDefinition(AopConfigUtils.AUTO_PROXY_CREATOR_BEAN_NAME)) {
+                TxRegistrationUtil.registerBeanDefinitionIfNotExists(registry,
+                        AopConfigUtils.AUTO_PROXY_CREATOR_BEAN_NAME, TxAdvisorAutoProxyCreator.class);
+            }
         }
     }
 }
