@@ -27,7 +27,7 @@ public class TxPointcut extends StaticMethodMatcherPointcut implements Serializa
         if ((method.getAnnotation(TxClient.class) != null ? true : false || method.getAnnotation(TxServer.class) != null ? true : false)) {
             return true;
         }
-        //dubbo 方法调用首次匹配 - 方法匹配
+        //dubbo 方法调用首次匹配 - 方法匹配(用于兼容cglib代理)
         if (method.getDeclaringClass().getName().startsWith("com.alibaba.dubbo")) {
             Annotation annotation = ProxyMethodTXCache.get(method.toString());
             if (annotation != null) {
@@ -48,8 +48,6 @@ public class TxPointcut extends StaticMethodMatcherPointcut implements Serializa
                 }
             }
         }
-        //兼容feign "default." + metadata.getClassName().xx;   FeignClientSpecification
-        // rpc$feign$classname  Feign
         return false;
     }
 

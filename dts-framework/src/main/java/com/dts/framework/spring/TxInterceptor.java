@@ -5,7 +5,6 @@ import com.dts.dlxmq.dlx.DlxConst;
 import com.dts.dlxmq.dlx.DlxMessageProducer;
 import com.dts.framework.annotation.TxClient;
 import com.dts.framework.annotation.TxServer;
-import com.dts.framework.dlxmq.TxDlxMessageConsumer;
 import com.dts.framework.support.*;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
@@ -82,7 +81,7 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
     private Object invokeServerTranscation(MethodInvocation invocation) throws Throwable {
         Object revalue = null;
         try {
-            //本地调用
+            //本地调用,只有被jdk代理时才会进入. JDK代理 proxy的  targetclass为interface. cglib为xximpl
             if (serverInJvm(invocation.getClass())) {
                 //本地调用结束
                 revalue = invocation.proceed();

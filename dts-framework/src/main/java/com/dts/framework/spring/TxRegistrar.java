@@ -3,6 +3,7 @@ package com.dts.framework.spring;
 import com.dts.framework.annotation.EnableTxConfig;
 import com.dts.framework.support.TxConst;
 import org.springframework.aop.config.AopConfigUtils;
+import org.springframework.aop.framework.autoproxy.InfrastructureAdvisorAutoProxyCreator;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -33,7 +34,7 @@ public class TxRegistrar implements ImportBeanDefinitionRegistrar {
             //如果已经有其他高等级的 TxAdvisorAutoProxyCreator 不创建或者会被覆盖
             if (!registry.containsBeanDefinition(AopConfigUtils.AUTO_PROXY_CREATOR_BEAN_NAME)) {
                 TxRegistrationUtil.registerBeanDefinitionIfNotExists(registry,
-                        AopConfigUtils.AUTO_PROXY_CREATOR_BEAN_NAME, TxAdvisorAutoProxyCreator.class);
+                        AopConfigUtils.AUTO_PROXY_CREATOR_BEAN_NAME, InfrastructureAdvisorAutoProxyCreator.class);
             }
         }
     }
