@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-26 10:13
  **/
 @Target({ElementType.CONSTRUCTOR, ElementType.METHOD, ElementType.PARAMETER, ElementType.FIELD, ElementType.ANNOTATION_TYPE})
@@ -31,4 +31,6 @@ public @interface TxClient {
      * @return
      */
     long delayTime() default 60*10L;
+
+    CommintType commitType() default CommintType.AUTO;
 }

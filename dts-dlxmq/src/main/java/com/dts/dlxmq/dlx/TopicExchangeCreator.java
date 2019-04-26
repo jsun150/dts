@@ -11,7 +11,7 @@ import org.springframework.beans.factory.support.DefaultBeanNameGenerator;
 /**
  * 创建exchange
  *
- * @author Jook
+ * @author jsun
  * @create 2019-03-28 17:04
  **/
 public class TopicExchangeCreator {

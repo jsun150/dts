@@ -3,8 +3,10 @@ package com.dts.framework.spring;
 import com.alibaba.fastjson.JSON;
 import com.dts.dlxmq.dlx.DlxConst;
 import com.dts.dlxmq.dlx.DlxMessageProducer;
+import com.dts.framework.annotation.CommintType;
 import com.dts.framework.annotation.TxClient;
 import com.dts.framework.annotation.TxServer;
+import com.dts.framework.dlxmq.ManualMessageBean;
 import com.dts.framework.support.*;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
@@ -27,7 +29,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-25 19:35
  **/
 public class TxInterceptor implements MethodInterceptor, Serializable, ApplicationContextAware {
@@ -226,6 +228,15 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
         for (String str : invokeMethods) {
             String mqinfo = SERVER_MQ_MAP.get(str);
             if (StringUtils.isEmpty(mqinfo)) continue;
+            //结果手动提交
+            if(txContext.getTxClient().commitType() == CommintType.MANUAL && txContext.isSuccess()) {
+                if (txContext.getManualMessageBean() == null){
+                    txContext.setManualMessageBean(new ManualMessageBean());
+                    txContext.getManualMessageBean().setTxMessage(txContext.getMessage());
+                }
+                txContext.getManualMessageBean().getMqInfoList().add(mqinfo);
+                continue;
+            }
             String[] args = mqinfo.split("@");
             amqpTemplate.convertAndSend(args[0], args[1], message);
         }

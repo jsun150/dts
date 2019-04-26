@@ -8,7 +8,7 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import java.util.Objects;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-25 19:48
  **/
 public class TxRegistrationUtil {

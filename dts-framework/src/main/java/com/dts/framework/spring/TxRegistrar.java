@@ -11,7 +11,7 @@ import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.MultiValueMap;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-25 16:29
  **/
 public class TxRegistrar implements ImportBeanDefinitionRegistrar {

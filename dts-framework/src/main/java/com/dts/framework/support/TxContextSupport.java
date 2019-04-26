@@ -2,7 +2,8 @@ package com.dts.framework.support;
 
 /**
  * 上下文存储
- * @author Jook
+ *
+ * @author jsun
  * @create 2019-03-26 17:28
  **/
 public class TxContextSupport {
@@ -14,10 +15,9 @@ public class TxContextSupport {
         }
     };
 
-    public static ThreadLocal<TxContext> getTxContextThreadLocal(){
+    public static ThreadLocal<TxContext> getTxContextThreadLocal() {
         return LOCAL_TX_CONTEXT;
     }
-
 
 
 }

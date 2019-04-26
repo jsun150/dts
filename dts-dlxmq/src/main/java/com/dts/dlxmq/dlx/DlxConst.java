@@ -1,7 +1,7 @@
 package com.dts.dlxmq.dlx;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-04-02 16:44
  **/
 public class DlxConst {

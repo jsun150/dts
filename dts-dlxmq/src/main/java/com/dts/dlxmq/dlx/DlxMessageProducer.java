@@ -8,7 +8,7 @@ import org.springframework.amqp.support.converter.SimpleMessageConverter;
 
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-29 23:20
  **/
 public class DlxMessageProducer {

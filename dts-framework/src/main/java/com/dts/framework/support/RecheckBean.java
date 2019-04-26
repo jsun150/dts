@@ -3,7 +3,7 @@ package com.dts.framework.support;
 import java.io.Serializable;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-26 19:50
  **/
 public class RecheckBean implements Serializable{

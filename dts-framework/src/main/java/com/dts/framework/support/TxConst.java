@@ -1,7 +1,7 @@
 package com.dts.framework.support;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-28 17:23
  **/
 public class TxConst {

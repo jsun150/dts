@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-04-19 10:59
  **/
 public class ProxyMethodTXCache {

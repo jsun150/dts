@@ -5,7 +5,7 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.ChannelAwareMessageListener;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-29 22:58
  **/
 public abstract class DlxMessageConsumer implements ChannelAwareMessageListener {

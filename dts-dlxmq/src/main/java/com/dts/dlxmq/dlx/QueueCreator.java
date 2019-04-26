@@ -10,7 +10,7 @@ import java.util.Map;
 /**
  * 队列创建  死信和接收队列
  *
- * @author Jook
+ * @author jsun
  * @create 2019-03-28 17:04
  **/
 public class QueueCreator {

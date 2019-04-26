@@ -9,7 +9,7 @@ import org.springframework.util.MultiValueMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-30 0:01
  **/
 public class DlxRegistrar implements ImportBeanDefinitionRegistrar {

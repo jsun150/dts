@@ -10,7 +10,7 @@ import java.lang.annotation.*;
 /**
  * config配置
  *
- * @author Jook
+ * @author jsun
  * @create 2019-03-25 16:36
  **/
 @Retention(RetentionPolicy.RUNTIME)
