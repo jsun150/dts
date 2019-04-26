@@ -11,6 +11,9 @@
 ### 复杂类型
 ![image](https://github.com/jsun150/dts/edit/master/complex.png)
 
--- 目前支持dubbo jar的注解配置
+-- 目前支持dubbo , feign 的注解配置
+
+-- 20190426  支持手动事务提交
+
                       
 
