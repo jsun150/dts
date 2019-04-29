@@ -17,7 +17,7 @@
 ## 使用方式
 
 接口提供方:
-    
+### 1    
 public interface Rpcserver { 
   
     @TxServer(mqInfo = "#{exchange}@#{routeKey}")
@@ -29,6 +29,8 @@ public interface Rpcserver {
 }
 
 
+### 2
+需要手动接受对应的routkey的消息， 消息类型为  com.dts.framework.support.TxMessage
 
 @PS: 接口方参数必须要有 RecheckBean 可以单独作为一个参数也可以 Request extend RecheckBean. 这个参数不自动填入不需要调用方去填入值
 
