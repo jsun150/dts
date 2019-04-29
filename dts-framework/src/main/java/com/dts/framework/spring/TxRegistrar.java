@@ -1,6 +1,7 @@
 package com.dts.framework.spring;
 
 import com.dts.framework.annotation.EnableTxConfig;
+import com.dts.framework.dlxmq.ManualMessageBean;
 import com.dts.framework.support.TxConst;
 import org.springframework.aop.config.AopConfigUtils;
 import org.springframework.aop.framework.autoproxy.InfrastructureAdvisorAutoProxyCreator;
@@ -22,6 +23,7 @@ public class TxRegistrar implements ImportBeanDefinitionRegistrar {
             MultiValueMap<String, Object> paramMap = importingClassMetadata.getAllAnnotationAttributes(EnableTxConfig.class.getName());
             TxConst.CONNECTION_FACTORY_ID = paramMap.get("factory").get(0).toString();
             TxConst.TX_RABBIT_TEMPLATE_ID = paramMap.get("rabbitTemplate").get(0).toString();
+            boolean targetClass = Boolean.valueOf(paramMap.get("proxyTargetClass").toString());
 
             BeanDefinition interceptor = TxRegistrationUtil.registerBeanDefinitionIfNotExists(registry,
                     TxInterceptor.class.getName(), TxInterceptor.class);
@@ -31,11 +33,19 @@ public class TxRegistrar implements ImportBeanDefinitionRegistrar {
             // 注入interceptor
             advisor.getPropertyValues().add("adviceBeanName", interceptor.getBeanClassName());
 
-            //如果已经有其他高等级的 TxAdvisorAutoProxyCreator 不创建或者会被覆盖
-            if (!registry.containsBeanDefinition(AopConfigUtils.AUTO_PROXY_CREATOR_BEAN_NAME)) {
-                TxRegistrationUtil.registerBeanDefinitionIfNotExists(registry,
-                        AopConfigUtils.AUTO_PROXY_CREATOR_BEAN_NAME, InfrastructureAdvisorAutoProxyCreator.class);
-            }
+            //手动提交
+            TxRegistrationUtil.registerBeanDefinitionIfNotExists(registry, ManualMessageBean.class.getName(),
+                    ManualMessageBean.class);
+
+            //直接替换 成最高等级的creator. 没有别的方式去保证排序.
+            BeanDefinition reg = TxRegistrationUtil.registerBeanDefinitionIfNotExists(registry,
+                    AopConfigUtils.AUTO_PROXY_CREATOR_BEAN_NAME, InfrastructureAdvisorAutoProxyCreator.class);
+            if (reg != null)
+                reg.getPropertyValues().add("proxyTargetClass", targetClass);
+
+            TxRegistrationUtil.registerBeanDefinitionIfNotExists(registry, TxBeanDefinitionRegistryPostProcessor.class.getName(),
+                    TxBeanDefinitionRegistryPostProcessor.class);
+
         }
     }
 }

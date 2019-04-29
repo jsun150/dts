@@ -29,15 +29,6 @@ public class TxContext {
     //方法对应的回调路径
     private Map<String, RecheckBean> recheckMap = new ConcurrentHashMap<>();
     private TxClient txClient;
-    private ManualMessageBean manualMessageBean;
-
-    public ManualMessageBean getManualMessageBean() {
-        return manualMessageBean;
-    }
-
-    public void setManualMessageBean(ManualMessageBean manualMessageBean) {
-        this.manualMessageBean = manualMessageBean;
-    }
 
     public TxClient getTxClient() {
         return txClient;

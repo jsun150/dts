@@ -30,4 +30,10 @@ public @interface EnableTxConfig {
      */
     String rabbitTemplate() default "";
 
+    /**
+     * jdk代理
+     * @return
+     */
+    boolean proxyTargetClass() default false;
+
 }
