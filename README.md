@@ -17,12 +17,15 @@
 ## 使用方式
 
 接口提供方:
+    
 public interface Rpcserver { 
-@TxServer(mqInfo = "#{exchange}@#{routeKey}")
-void String getName(Request request)
-                      
-@TxServer(mqInfo = "#{exchange}@#{routeKey}")
-void String getName(Integer userId, RecheckBean var2)
+  
+    @TxServer(mqInfo = "#{exchange}@#{routeKey}")
+    void String getName(Request request)
+
+    @TxServer(mqInfo = "#{exchange}@#{routeKey}")
+    void String getName(Integer userId, RecheckBean var2)
+  
 }
 
 
@@ -32,13 +35,15 @@ void String getName(Integer userId, RecheckBean var2)
 服务调用方
 
 public interface TestService {
-  void test();
+
+    void test();
+    void boot1()
 }
 
 public class TestServiceImpl implements TestService {
 
-@Autowired
-private Rpcserver rpcserver 
+    @Autowired
+    private Rpcserver rpcserver 
     
     // 自动提交事务
     @TxClient()
