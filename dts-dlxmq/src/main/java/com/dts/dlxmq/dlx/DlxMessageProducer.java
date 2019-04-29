@@ -8,7 +8,9 @@ import org.springframework.amqp.support.converter.SimpleMessageConverter;
 
 
 /**
- * @author Jook
+ * 延迟发送
+ *
+ * @author jsun
  * @create 2019-03-29 23:20
  **/
 public class DlxMessageProducer {
@@ -16,6 +18,12 @@ public class DlxMessageProducer {
     private RabbitTemplate dlxAmqpTemplate;
     private volatile MessageConverter messageConverter = new SimpleMessageConverter();
 
+    /**
+     * 延迟发送
+     *
+     * @param message
+     * @param second
+     */
     public void sendMessageToDlx(String message, Long second) {
         Long millisecond = second * 1000;
         MessageProperties properties = new MessageProperties();
@@ -27,11 +35,11 @@ public class DlxMessageProducer {
         return messageConverter.toMessage(o, properties);
     }
 
-    public RabbitTemplate getDlxAmqpTemplate() {
+    protected RabbitTemplate getDlxAmqpTemplate() {
         return dlxAmqpTemplate;
     }
 
-    public void setDlxAmqpTemplate(RabbitTemplate dlxAmqpTemplate) {
+    protected void setDlxAmqpTemplate(RabbitTemplate dlxAmqpTemplate) {
         this.dlxAmqpTemplate = dlxAmqpTemplate;
     }
 }

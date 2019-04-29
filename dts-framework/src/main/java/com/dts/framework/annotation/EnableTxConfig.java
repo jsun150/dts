@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Import;
 import java.lang.annotation.*;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-25 16:30
  **/
 @Retention(RetentionPolicy.RUNTIME)
@@ -29,5 +29,11 @@ public @interface EnableTxConfig {
      * @return
      */
     String rabbitTemplate() default "";
+
+    /**
+     * jdk代理
+     * @return
+     */
+    boolean proxyTargetClass() default false;
 
 }

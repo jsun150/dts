@@ -3,6 +3,7 @@ package com.dts.framework.spring;
 import com.alibaba.fastjson.JSON;
 import com.dts.dlxmq.dlx.DlxConst;
 import com.dts.dlxmq.dlx.DlxMessageProducer;
+import com.dts.framework.annotation.CommintType;
 import com.dts.framework.annotation.TxClient;
 import com.dts.framework.annotation.TxServer;
 import com.dts.framework.support.*;
@@ -24,10 +25,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-25 19:35
  **/
 public class TxInterceptor implements MethodInterceptor, Serializable, ApplicationContextAware {
@@ -37,8 +37,7 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
     protected final Log logger = LogFactory.getLog(getClass());
 
     private ThreadLocal<TxContext> LOCAL_TX_CONTEXT = TxContextSupport.getTxContextThreadLocal();
-    //调用方对应的mq路径
-    private Map<String, String> SERVER_MQ_MAP = new ConcurrentHashMap<>();
+
     // 本地方法记录
     private List<String> injvmMethodName = new ArrayList<>();
     private List<String> serverthodName = new ArrayList<>();
@@ -82,7 +81,8 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
         Object revalue = null;
         try {
             //本地调用,只有被jdk代理时才会进入. JDK代理 proxy的  targetclass为interface. cglib为xximpl
-            if (serverInJvm(invocation.getClass())) {
+            //cglib类型代理不会被放入切面  jdk会被织入
+            if (serverInJvm(invocation)) {
                 //本地调用结束
                 revalue = invocation.proceed();
                 //rpc过来的请求,触发的本地调用 是否满足recheck
@@ -102,12 +102,12 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
                 //远程调用
                 Method method = invocation.getMethod();
                 TxServer ts = null;
-                if (StringUtils.isEmpty((SERVER_MQ_MAP.get(method.toString())))) {
+                if (StringUtils.isEmpty((ProxyMethodTXCache.getMqinfoByMethod(method.toString())))) {
                     ts = (TxServer) ProxyMethodTXCache.get(invocation.getMethod().toString());
                     if (StringUtils.isEmpty(ts.mqInfo())) {
                         throw new Exception("error: " + method.toString() + " annotation can not find mqInfo");
                     }
-                    SERVER_MQ_MAP.put(method.toString(), ts.mqInfo());
+                    ProxyMethodTXCache.putMethodMqinfo(method.toString(), ts.mqInfo());
                 }
 
                 // 填入回调参数
@@ -125,8 +125,9 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
                     }
                     BeanUtils.copyProperties(LOCAL_TX_CONTEXT.get().getRecheckMap().get(method.toString()), obj);
                 }
-                revalue = invocation.proceed();
                 LOCAL_TX_CONTEXT.get().getInvokeMethodNameList().add(method.toString());
+
+                revalue = invocation.proceed();
             }
         } catch (Throwable ex) {
             if (logger.isTraceEnabled()) {
@@ -224,10 +225,13 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
         }
         String message = JSON.toJSONString(txContext.getMessage());
         for (String str : invokeMethods) {
-            String mqinfo = SERVER_MQ_MAP.get(str);
+            String mqinfo = ProxyMethodTXCache.getMqinfoByMethod(str);
             if (StringUtils.isEmpty(mqinfo)) continue;
-            String[] args = mqinfo.split("@");
-            amqpTemplate.convertAndSend(args[0], args[1], message);
+            //非手动提交
+            if (!(txContext.getTxClient().commitType() == CommintType.MANUAL && txContext.isSuccess())) {
+                String[] args = mqinfo.split("@");
+                amqpTemplate.convertAndSend(args[0], args[1], message);
+            }
         }
         if (logger.isTraceEnabled()) {
             logger.trace("Completing TxClient end for [" + txContext.getMethod().toString() + "] time:" + (txContext.getEndTime() - txContext.getStartTime()));
@@ -264,8 +268,8 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
         return findBean(cla_.getSuperclass());
     }
 
-    private boolean serverInJvm(Class clas_) {
-        return clas_.getName().equalsIgnoreCase(org.springframework.aop.framework.ReflectiveMethodInvocation.class.getName());
+    private boolean serverInJvm(MethodInvocation invocation) {
+        return invocation.getThis().getClass().getName().endsWith("Impl");
     }
 
     /**
@@ -280,7 +284,7 @@ public class TxInterceptor implements MethodInterceptor, Serializable, Applicati
         for (int i = 0; i < args.length; i++) {
             if (args[i] != null && args[i] instanceof RecheckBean) {
                 RecheckBean bean = (RecheckBean) args[i];
-                if (!StringUtils.isEmpty(bean.getRecheckFunction()) && !StringUtils.isEmpty(bean.getTxFlowId())){
+                if (!StringUtils.isEmpty(bean.getRecheckFunction()) && !StringUtils.isEmpty(bean.getTxFlowId())) {
                     return bean;
                 }
             }

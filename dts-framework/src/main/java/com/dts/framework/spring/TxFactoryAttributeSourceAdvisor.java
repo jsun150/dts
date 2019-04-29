@@ -5,7 +5,7 @@ import org.springframework.aop.support.AbstractBeanFactoryPointcutAdvisor;
 import org.springframework.beans.factory.BeanFactory;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-25 19:32
  **/
 public class TxFactoryAttributeSourceAdvisor extends AbstractBeanFactoryPointcutAdvisor {

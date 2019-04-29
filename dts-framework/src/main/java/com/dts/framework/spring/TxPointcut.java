@@ -14,7 +14,7 @@ import java.lang.reflect.Method;
  * 方法切点判断
  * StaticMethodMatcherPointcut
  *
- * @author Jook
+ * @author jsun
  * @create 2019-03-25 19:33
  **/
 public class TxPointcut extends StaticMethodMatcherPointcut implements Serializable {

@@ -1,15 +1,15 @@
 package com.dts.framework.support;
 
 import com.dts.framework.annotation.TxClient;
+import com.dts.framework.dlxmq.ManualMessageBean;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-26 16:14
  **/
 public class TxContext {
@@ -29,7 +29,6 @@ public class TxContext {
     //方法对应的回调路径
     private Map<String, RecheckBean> recheckMap = new ConcurrentHashMap<>();
     private TxClient txClient;
-
 
     public TxClient getTxClient() {
         return txClient;

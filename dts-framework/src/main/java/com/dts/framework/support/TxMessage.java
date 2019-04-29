@@ -1,7 +1,7 @@
 package com.dts.framework.support;
 
 /**
- * @author Jook
+ * @author jsun
  * @create 2019-03-26 16:38
  **/
 public class TxMessage {

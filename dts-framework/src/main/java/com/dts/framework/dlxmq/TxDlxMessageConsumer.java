@@ -14,7 +14,7 @@ import org.springframework.context.ApplicationContextAware;
 /**
  * server端使用延迟取确认的consumer
  *
- * @author Jook
+ * @author jsun
  * @create 2019-03-29 22:58
  **/
 public abstract class TxDlxMessageConsumer implements ChannelAwareMessageListener, ApplicationContextAware {
