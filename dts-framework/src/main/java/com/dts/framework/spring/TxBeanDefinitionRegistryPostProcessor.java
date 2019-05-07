@@ -1,12 +1,14 @@
 package com.dts.framework.spring;
 
 import org.springframework.aop.support.AbstractBeanFactoryPointcutAdvisor;
+import org.springframework.aop.support.AbstractPointcutAdvisor;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.transaction.interceptor.TransactionInterceptor;
 
+import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -29,7 +31,7 @@ public class TxBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegi
                 AbstractBeanFactoryPointcutAdvisor advisor =
                         ((ConfigurableListableBeanFactory) registry).getBean(name, AbstractBeanFactoryPointcutAdvisor.class);
                 if (registry.getBeanDefinition(advisor.getAdviceBeanName()).getBeanClassName().equals(TransactionInterceptor.class.getName())) {
-                    advisor.setOrder(Integer.MAX_VALUE - 1);
+                    advisor.setOrder(getNeedOrder(advisor));
                 }
             }
         }
@@ -41,4 +43,25 @@ public class TxBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegi
         return;
     }
 
+    /**
+     * 如果order为null 或者是 Integer.MAX_VALUE ,则设置成 Integer.MAX_VALUE - 1.
+     * 其他类型的order不改变
+     *
+     * @param advisor
+     * @return
+     */
+    private int getNeedOrder(AbstractBeanFactoryPointcutAdvisor advisor) {
+        int defaultOrder = Integer.MAX_VALUE - 1;
+        try {
+            Field field = AbstractPointcutAdvisor.class.getDeclaredField("order");
+            field.setAccessible(true);
+            Object object = field.get(advisor);
+            if (object == null) return defaultOrder;
+            int advisorOrder = Integer.valueOf(object.toString());
+            return advisorOrder == Integer.MAX_VALUE ? defaultOrder : advisorOrder;
+        } catch (Exception e) {
+        }
+        return defaultOrder;
+
+    }
 }
